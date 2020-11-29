@@ -23,6 +23,7 @@ const (
 	stapbNALULengthSize = 2
 
 	donSize = 2
+	maxDonValue = ^uint16(0)
 
 	naluTypeBitmask   = 0x1F
 	naluRefIdcBitmask = 0x60
@@ -93,7 +94,7 @@ func NalToStapBPayload(nalu []byte) []byte{
 	// increase donSN only for new frames (nonIdr).
 	// not for SPS, PPS
 	if naluType == 1 {
-		donSN++
+		donSN = (donSN+1) % maxDonValue
 	}
 
 	return out
@@ -247,7 +248,7 @@ func NalToFuBPayload(mtu int, nalu []byte) [][]byte{
 
 			// copy the don into the array
 			binary.BigEndian.PutUint16(out[fuaHeaderSize:], donSN)
-			donSN++
+			donSN = (donSN+1) % maxDonValue
 			// copy the nal into the array
 			copy(out[fuaHeaderSize + donSize:], naluData[naluDataIndex:naluDataIndex+currentFragmentSize])
 
