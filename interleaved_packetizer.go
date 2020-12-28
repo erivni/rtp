@@ -4,27 +4,15 @@ import (
 	"time"
 )
 
-// Payloader payloads a byte array for use as rtp.Packet payloads
-type Payloader interface {
-	Payload(mtu int, payload []byte) [][]byte
-}
 
-// Packetizer packetizes a payload
-type Packetizer interface {
-	Packetize(payload []byte, samples uint32) []*Packet
-	PacketizeInterleaved(payload []byte, samples uint32) []*Packet
-	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
-	GetTimestamps() (uint32, uint32)
-	EnableAbsSendTime(value int)
-}
-
-type packetizer struct {
+type interleavedPacketizer struct {
 	MTU              int
 	PayloadType      uint8
 	SSRC             uint32
 	Payloader        Payloader
 	Sequencer        Sequencer
 	Timestamp        uint32
+	InterleavedTimestamp uint32 // use for packetizing future samples
 	ClockRate        uint32
 	extensionNumbers struct { // put extension numbers in here. If they're 0, the extension is disabled (0 is not a legal extension number)
 		AbsSendTime int // http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
@@ -33,8 +21,8 @@ type packetizer struct {
 }
 
 // NewPacketizer returns a new instance of a Packetizer for a specific payloader
-func NewPacketizer(mtu int, pt uint8, ssrc uint32, payloader Payloader, sequencer Sequencer, clockRate uint32) Packetizer {
-	return &packetizer{
+func NewInterleavedPacketizer(mtu int, pt uint8, ssrc uint32, payloader Payloader, sequencer Sequencer, clockRate uint32) Packetizer {
+	return &interleavedPacketizer{
 		MTU:         mtu,
 		PayloadType: pt,
 		SSRC:        ssrc,
@@ -46,12 +34,12 @@ func NewPacketizer(mtu int, pt uint8, ssrc uint32, payloader Payloader, sequence
 	}
 }
 
-func (p *packetizer) EnableAbsSendTime(value int) {
+func (p *interleavedPacketizer) EnableAbsSendTime(value int) {
 	p.extensionNumbers.AbsSendTime = value
 }
 
 // Packetize packetizes the payload of an RTP packet and returns one or more RTP packets
-func (p *packetizer) Packetize(payload []byte, samples uint32) []*Packet {
+func (p *interleavedPacketizer) Packetize(payload []byte, samples uint32) []*Packet {
 	// Guard against an empty payload
 	if len(payload) == 0 {
 		return nil
@@ -93,15 +81,59 @@ func (p *packetizer) Packetize(payload []byte, samples uint32) []*Packet {
 	return packets
 }
 
+
 // PacketizeInterleaved packetizes the payload of an RTP packet and returns one or more RTP packets
-func (p *packetizer) PacketizeInterleaved(payload []byte, samples uint32) []*Packet {
-	panic("not implemented")
+func (p *interleavedPacketizer) PacketizeInterleaved(payload []byte, samples uint32) []*Packet {
+	// Guard against an empty payload
+	if len(payload) == 0 {
+		return nil
+	}
+
+	payloads := p.Payloader.Payload(p.MTU-12, payload)
+	packets := make([]*Packet, len(payloads))
+
+	for i, pp := range payloads {
+		packets[i] = &Packet{
+			Header: Header{
+				Version:        2,
+				Padding:        false,
+				Extension:      false,
+				Marker:         i == len(payloads)-1,
+				PayloadType:    p.PayloadType,
+				SequenceNumber: p.Sequencer.NextSequenceNumber(),
+				Timestamp:      p.Timestamp, // Figure out how to do timestamps
+				SSRC:           p.SSRC,
+			},
+			Payload: pp,
+		}
+	}
+	p.InterleavedTimestamp += samples
+
+	if len(packets) != 0 && p.extensionNumbers.AbsSendTime != 0 {
+		sendTime := NewAbsSendTimeExtension(p.timegen())
+		// apply http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
+		b, err := sendTime.Marshal()
+		if err != nil {
+			return nil // never happens
+		}
+		err = packets[len(packets)-1].SetExtension(uint8(p.extensionNumbers.AbsSendTime), b)
+		if err != nil {
+			return nil // never happens
+		}
+	}
+
+	return packets
 }
 
-func (p *packetizer) SetTimestamps(timestamp uint32, interleavedTimestamp uint32){
-	panic("not impoemented")
+func (p *interleavedPacketizer) SetTimestamps(timestamp uint32, interleavedTimestamp uint32){
+	if timestamp > 0{
+		p.Timestamp = timestamp
+	}
+	if interleavedTimestamp > 0{
+		p.InterleavedTimestamp = timestamp
+	}
 }
 
-func (p *packetizer) GetTimestamps() (uint32, uint32){
-	panic("not impoemented")
+func (p *interleavedPacketizer) GetTimestamps() (uint32, uint32){
+	return p.Timestamp, p.InterleavedTimestamp
 }
