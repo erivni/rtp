@@ -130,7 +130,7 @@ func (p *interleavedPacketizer) SetTimestamps(timestamp uint32, interleavedTimes
 		p.Timestamp = timestamp
 	}
 	if interleavedTimestamp > 0{
-		p.InterleavedTimestamp = timestamp
+		p.InterleavedTimestamp = interleavedTimestamp
 	}
 }
 
