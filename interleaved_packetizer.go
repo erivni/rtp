@@ -57,7 +57,7 @@ func (p *interleavedPacketizer) Packetize(payload []byte, samples uint32) []*Pac
 				Marker:         i == len(payloads)-1,
 				PayloadType:    p.PayloadType,
 				SequenceNumber: p.Sequencer.NextSequenceNumber(),
-				Timestamp:      p.Timestamp, // Figure out how to do timestamps
+				Timestamp:      p.InterleavedTimestamp, // Figure out how to do timestamps
 				SSRC:           p.SSRC,
 			},
 			Payload: pp,
