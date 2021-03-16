@@ -155,9 +155,10 @@ type H264Packet struct {
 func (p *H264Packet) Unmarshal(payload []byte) ([]byte, error) {
 	if payload == nil {
 		return nil, errNilPacket
-	} else if len(payload) <= 2 {
-		return nil, fmt.Errorf("%w: %d <= 2", errShortPacket, len(payload))
 	}
+	//else if len(payload) <= 2 {
+	//	return nil, fmt.Errorf("%w: %d <= 2", errShortPacket, len(payload))
+	//}
 
 	// NALU Types
 	// https://tools.ietf.org/html/rfc6184#section-5.4
