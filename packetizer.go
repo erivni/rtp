@@ -106,3 +106,7 @@ func (p *packetizer) SetTimestamps(timestamp uint32, interleavedTimestamp uint32
 func (p *packetizer) GetTimestamps() (uint32, uint32){
 	panic("not impoemented")
 }
+
+func (p *packetizer) GetStats() (uint64, uint64){
+	panic("not impoemented")
+}
