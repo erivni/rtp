@@ -15,6 +15,7 @@ type Packetizer interface {
 	PacketizeInterleaved(payload []byte, samples uint32) []*Packet
 	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
 	GetTimestamps() (uint32, uint32)
+	GetStats() (uint64, uint64)
 	EnableAbsSendTime(value int)
 }
 
