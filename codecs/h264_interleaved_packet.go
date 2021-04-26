@@ -3,6 +3,8 @@ package codecs
 import (
 	"encoding/binary"
 	"errors"
+	"fmt"
+	"time"
 )
 
 // H264InterleavedPayloader payloads H264 packets
@@ -179,11 +181,13 @@ func (p *H264InterleavedPayloader) Payload(mtu int, payload []byte) [][]byte {
 
 		// NALU fits into a sinlge packet, wrap it in an STAP-B packet
 		if len(nalu) + stapbHeaderSize + donSize + stapbNALULengthSize <= mtu {
+			fmt.Println("interleaved pakcet: now: ", time.Now().Format("2006-01-02 15:04:05.000") , " stapB naluType: ", naluType , " don: ", don)
 			payloads = append(payloads, NalToStapBPayload(nalu, don))
 			return
 		}
 
 		// NALU is larger than mtu, fragment according to FU-B scheme
+		fmt.Println("interleaved pakcet: now: ", time.Now().Format("2006-01-02 15:04:05.000") , " FU-B naluType: ", naluType , " don: ", don)
 		payloads = append(payloads, NalToFuBPayload(mtu, nalu, don)...)
 	})
 
