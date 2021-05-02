@@ -13,6 +13,10 @@ type Payloader interface {
 type Packetizer interface {
 	Packetize(payload []byte, samples uint32) []*Packet
 	EnableAbsSendTime(value int)
+	PacketizeInterleaved(payload []byte, samples uint32) []*Packet
+	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
+	GetTimestamps() (uint32, uint32)
+	GetStats() (uint64, uint64)
 	SkipSamples(skippedSamples uint32)
 }
 
@@ -95,4 +99,20 @@ func (p *packetizer) Packetize(payload []byte, samples uint32) []*Packet {
 // RTP payloads produced have a gap in timestamps
 func (p *packetizer) SkipSamples(skippedSamples uint32) {
 	p.Timestamp += skippedSamples
+}
+// PacketizeInterleaved packetizes the payload of an RTP packet and returns one or more RTP packets
+func (p *packetizer) PacketizeInterleaved(payload []byte, samples uint32) []*Packet {
+	panic("not implemented")
+}
+
+func (p *packetizer) SetTimestamps(timestamp uint32, interleavedTimestamp uint32){
+	panic("not impoemented")
+}
+
+func (p *packetizer) GetTimestamps() (uint32, uint32){
+	panic("not impoemented")
+}
+
+func (p *packetizer) GetStats() (uint64, uint64){
+	panic("not impoemented")
 }
