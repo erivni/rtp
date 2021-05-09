@@ -54,6 +54,8 @@ func (p *interleavedPacketizer) Packetize(payload []byte, samples uint32) []*Pac
 	payloads := p.Payloader.Payload(p.MTU-12, payload)
 	packets := make([]*Packet, len(payloads))
 
+	p.Timestamp += samples
+
 	for i, pp := range payloads {
 		packets[i] = &Packet{
 			Header: Header{
@@ -71,7 +73,6 @@ func (p *interleavedPacketizer) Packetize(payload []byte, samples uint32) []*Pac
 		p.numberOfPackets++
 		p.sizeBytes += 15 + uint64(len(pp))
 	}
-	p.Timestamp += samples
 
 	if len(packets) != 0 && p.extensionNumbers.AbsSendTime != 0 {
 		sendTime := NewAbsSendTimeExtension(p.timegen())
