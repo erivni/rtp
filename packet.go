@@ -12,6 +12,10 @@ type Extension struct {
 	payload []byte
 }
 
+func (e *Extension) String() string {
+	return fmt.Sprintf("%d:%s", e.id, string(e.payload[:]))
+}
+
 // Header represents an RTP packet header
 // NOTE: PayloadOffset is populated by Marshal/Unmarshal and should not be modified
 type Header struct {
@@ -357,6 +361,16 @@ func (h *Header) MarshalSize() int {
 	}
 
 	return size
+}
+
+func (h *Header) SetExtensions(extensions []Extension) error {
+	for _, extension := range extensions {
+		err := h.SetExtension(extension.id, extension.payload)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // SetExtension sets an RTP header extension
