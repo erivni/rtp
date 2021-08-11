@@ -160,17 +160,21 @@ func NalToFuBPayload(mtu int, nalu []byte, donSN uint16) [][]byte{
 
 // Payload fragments a H264 packet across one or more byte arrays
 func (p *H264InterleavedPayloader) Payload(mtu int, payload []byte) [][]byte {
+	var payloads [][]byte
+	if len(payload) < 2 {
+		return payloads
+	}
+
 	// first 2 bytes hold the DON for the interleaved mode
 	// next bytes are the frame itself
 	frame := payload[2:]
 	don := binary.BigEndian.Uint16(payload)
 
-	var payloads [][]byte
-	if payload == nil {
-		return payloads
-	}
-
 	emitNalus(frame, func(nalu []byte) {
+		if len(nalu) == 0 {
+			return
+		}
+
 		naluType := nalu[0] & naluTypeBitmask
 
 		if naluType == 9 || naluType == 12  {
