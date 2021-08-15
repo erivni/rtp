@@ -1,6 +1,7 @@
 package rtp
 
 import (
+
 	"time"
 )
 
@@ -42,6 +43,10 @@ func (p *interleavedPacketizer) EnableAbsSendTime(value int) {
 }
 func (p *interleavedPacketizer) SkipSamples(skippedSamples uint32) {
 	p.Timestamp += skippedSamples
+}
+
+func (p *interleavedPacketizer) SkipInterleavedSamples(skippedSamples uint32) {
+	p.InterleavedTimestamp += skippedSamples
 }
 
 // Packetize packetizes the payload of an RTP packet and returns one or more RTP packets
