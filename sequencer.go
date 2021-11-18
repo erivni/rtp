@@ -9,6 +9,7 @@ import (
 type Sequencer interface {
 	NextSequenceNumber() uint16
 	RollOverCount() uint64
+	CurrentSequenceNumber() uint16
 }
 
 // NewRandomSequencer returns a new sequencer starting from a random sequence
@@ -44,6 +45,10 @@ func (s *sequencer) NextSequenceNumber() uint16 {
 		s.rollOverCount++
 	}
 
+	return s.sequenceNumber
+}
+
+func (s *sequencer) CurrentSequenceNumber() uint16 {
 	return s.sequenceNumber
 }
 

@@ -155,3 +155,7 @@ func (p *interleavedPacketizer) GetTimestamps() (uint32, uint32) {
 func (p *interleavedPacketizer) GetStats() (uint64, uint64) {
 	return p.numberOfPackets, p.sizeBytes
 }
+
+func (p *interleavedPacketizer) GetCurrentSequenceNumber() (uint16) {
+	return p.Sequencer.CurrentSequenceNumber()
+}

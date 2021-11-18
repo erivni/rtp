@@ -17,6 +17,7 @@ type Packetizer interface {
 	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
 	GetTimestamps() (uint32, uint32)
 	GetStats() (uint64, uint64)
+	GetCurrentSequenceNumber() (uint16)
 	SkipSamples(skippedSamples uint32)
 	SkipInterleavedSamples(skippedSamples uint32)
 }
@@ -120,5 +121,9 @@ func (p *packetizer) GetTimestamps() (uint32, uint32) {
 }
 
 func (p *packetizer) GetStats() (uint64, uint64) {
+	panic("not impoemented")
+}
+
+func (p *packetizer) GetCurrentSequenceNumber() (uint16){
 	panic("not impoemented")
 }
