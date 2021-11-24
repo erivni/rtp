@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pion/rtp/v2/codecs"
+	"github.com/pion/rtp/codecs"
 )
 
 func TestPacketizer(t *testing.T) {
@@ -43,6 +43,7 @@ func TestPacketizer_AbsSendTime(t *testing.T) {
 			Padding:          false,
 			Extension:        true,
 			Marker:           true,
+			PayloadOffset:    0, // not set by Packetize() at now
 			PayloadType:      98,
 			SequenceNumber:   1234,
 			Timestamp:        45678,

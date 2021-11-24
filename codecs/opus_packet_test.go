@@ -52,6 +52,12 @@ func TestOpusPayloader_Payload(t *testing.T) {
 		t.Fatal("Generated payload should be the 1")
 	}
 
+	// Negative MTU, small payload
+	res = pck.Payload(-1, payload)
+	if len(res) != 1 {
+		t.Fatal("Generated payload should be the 1")
+	}
+
 	// Positive MTU, small payload
 	res = pck.Payload(2, payload)
 	if len(res) != 1 {
@@ -59,10 +65,15 @@ func TestOpusPayloader_Payload(t *testing.T) {
 	}
 }
 
-func TestOpusIsPartitionHead(t *testing.T) {
-	opus := &OpusPacket{}
+func TestOpusPartitionHeadChecker_IsPartitionHead(t *testing.T) {
+	checker := &OpusPartitionHeadChecker{}
+	t.Run("SmallPacket", func(t *testing.T) {
+		if checker.IsPartitionHead([]byte{}) {
+			t.Fatal("Small packet should not be the head of a new partition")
+		}
+	})
 	t.Run("NormalPacket", func(t *testing.T) {
-		if !opus.IsPartitionHead([]byte{0x00, 0x00}) {
+		if !checker.IsPartitionHead([]byte{0x00, 0x00}) {
 			t.Fatal("All OPUS RTP packet should be the head of a new partition")
 		}
 	})
