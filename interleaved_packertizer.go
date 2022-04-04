@@ -2,6 +2,7 @@ package rtp
 
 import (
 	"github.com/pion/rtp/codecs"
+	"reflect"
 	"time"
 )
 
@@ -55,7 +56,15 @@ func (p *interleavedPacketizer) PacketizeAndDetectData(payload []byte, samples u
 		return nil, -1
 	}
 
-	payloads, payloadDataIdx := p.Payloader.(*codecs.H264Payloader).PayloadAndDetectData(p.MTU-12, payload)
+	var payloads [][]byte
+	var payloadDataIdx int
+
+	if reflect.TypeOf(p.Payloader).String() == "*codecs.H264Payloader" {
+		payloads, payloadDataIdx = p.Payloader.(*codecs.H264Payloader).PayloadAndDetectData(p.MTU-12, payload)
+	} else {
+		payloads = p.Payloader.(*codecs.H264Payloader).Payload(p.MTU-12, payload)
+	}
+
 	packets := make([]*Packet, len(payloads))
 
 	for i, pp := range payloads {
