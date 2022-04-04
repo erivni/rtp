@@ -15,6 +15,7 @@ type Packetizer interface {
 	PacketizeAndDetectData(payload []byte, samples uint32) ([]*Packet, int)
 	EnableAbsSendTime(value int)
 	PacketizeInterleaved(payload []byte, samples uint32) []*Packet
+	PacketizeInterleavedAndDetectData(payload []byte, samples uint32) ([]*Packet, int)
 	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
 	GetTimestamps() (uint32, uint32)
 	GetStats() (uint64, uint64)
@@ -56,6 +57,10 @@ func (p *packetizer) EnableAbsSendTime(value int) {
 }
 
 func (p *packetizer) PacketizeAndDetectData(payload []byte, samples uint32) ([]*Packet, int) {
+	panic("not implemented")
+}
+
+func (p *packetizer) PacketizeInterleavedAndDetectData(payload []byte, samples uint32) ([]*Packet, int) {
 	panic("not implemented")
 }
 
