@@ -198,8 +198,16 @@ func (p *interleavedPacketizer) PacketizeInterleavedAndDetectData(payload []byte
 	if len(payload) == 0 {
 		return nil, -1
 	}
+	
+	var payloads [][]byte
+	var payloadDataIdx int	
 
-	payloads, payloadDataIdx := p.Payloader.(*codecs.H264Payloader).PayloadAndDetectData(p.MTU-12, payload)
+	if reflect.TypeOf(p.Payloader).String() == "*codecs.H264Payloader" {
+		payloads, payloadDataIdx = p.Payloader.(*codecs.H264Payloader).PayloadAndDetectData(p.MTU-12, payload)
+	} else {
+		payloads = p.Payloader.Payload(p.MTU-12, payload)
+	}
+	
 	packets := make([]*Packet, len(payloads))
 
 	for i, pp := range payloads {
