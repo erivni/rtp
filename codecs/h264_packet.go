@@ -131,7 +131,6 @@ func (p *H264Payloader) PayloadAndDetectData(mtu uint16, payload []byte) ([][]by
 	var payloads [][]byte
 	dataPayloadIdx := -1
 	dataPayloadFound := false
-	payloadIdx := 0
 
 	if len(payload) == 0 {
 		return payloads, dataPayloadIdx
@@ -171,7 +170,6 @@ func (p *H264Payloader) PayloadAndDetectData(mtu uint16, payload []byte) ([][]by
 				out := make([]byte, len(stapANalu))
 				copy(out, stapANalu)
 				payloads = append(payloads, out)
-				payloadIdx++
 			}
 
 			p.spsNalu = nil
@@ -187,9 +185,7 @@ func (p *H264Payloader) PayloadAndDetectData(mtu uint16, payload []byte) ([][]by
 			if !dataPayloadFound {
 				if naluType == 1 || naluType == 2 || naluType == 5 { // this is a data nalu
 					dataPayloadFound = true
-					dataPayloadIdx = payloadIdx
-				} else {
-					payloadIdx++
+					dataPayloadIdx = len(payloads) - 1
 				}
 			}
 			return
@@ -223,9 +219,7 @@ func (p *H264Payloader) PayloadAndDetectData(mtu uint16, payload []byte) ([][]by
 			if !dataPayloadFound {
 				if naluType == 1 || naluType == 2 || naluType == 5 { // this is a data nalu
 					dataPayloadFound = true
-					dataPayloadIdx = payloadIdx
-				} else {
-					payloadIdx++
+					dataPayloadIdx = len(payloads) - 1
 				}
 			}
 			currentFragmentSize := min(maxFragmentSize, naluDataRemaining)

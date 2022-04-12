@@ -43,6 +43,7 @@ func TestH264Payloader_Payload(t *testing.T) {
 		t.Fatal("Generated payload should be empty")
 	}
 
+
 	// 0 MTU, small payload
 	res = pck.Payload(0, smallpayload)
 	if len(res) != 0 {
@@ -289,5 +290,37 @@ func TestH264Payloader_Payload_SPS_and_PPS_handling(t *testing.T) {
 
 	if !reflect.DeepEqual(pck.Payload(1500, []byte{0x05, 0x04, 0x05}), expected) {
 		t.Fatal("SPS and PPS aren't packed together")
+	}
+}
+
+func TestH264Payloader_PayloadAndDetectDataIframeAfterSpsPps(t *testing.T) {
+	pck := H264Payloader{}
+
+	// When packetizing SPS and PPS are emitted with following NALU
+	res := pck.Payload(1500, []byte{0x07, 0x00, 0x01})
+	if len(res) != 0 {
+		t.Fatal("Generated payload should be empty")
+	}
+
+	res = pck.Payload(1500, []byte{0x08, 0x02, 0x03})
+	if len(res) != 0 {
+		t.Fatal("Generated payload should be empty")
+	}
+
+	idx := -1
+	res, idx = pck.PayloadAndDetectData(1500, []byte{0x05, 0x04, 0x05})
+
+	if idx != 1 {
+		t.Fatal("data index when nalu 5 starts after sps and pps must be 1")
+	}
+}
+
+func TestH264Payloader_PayloadAndDetectDataIframe(t *testing.T) {
+	pck := H264Payloader{}
+
+	_, idx := pck.PayloadAndDetectData(1500, []byte{0x05, 0x04, 0x05})
+
+	if idx != 0 {
+		t.Fatal("data index when frame starts with nalu 5 must be 0")
 	}
 }
