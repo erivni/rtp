@@ -59,9 +59,10 @@ func (p *interleavedPacketizer) PacketizeAndDetectData(payload []byte, samples u
 	var payloads [][]byte
 	var payloadDataIdx int
 
-	if reflect.TypeOf(p.Payloader).String() == "*codecs.H264Payloader" {
+	switch p.Payloader.(type) {
+	case *codecs.H264Payloader:
 		payloads, payloadDataIdx = p.Payloader.(*codecs.H264Payloader).PayloadAndDetectData(p.MTU-12, payload)
-	} else {
+	default:
 		payloads = p.Payloader.Payload(p.MTU-12, payload)
 	}
 
@@ -202,9 +203,10 @@ func (p *interleavedPacketizer) PacketizeInterleavedAndDetectData(payload []byte
 	var payloads [][]byte
 	var payloadDataIdx int = 0 // data is in first payload unless otherwise detected. including non h264 payloaders
 
-	if reflect.TypeOf(p.Payloader).String() == "*codecs.H264Payloader" {
+	switch p.Payloader.(type) {
+	case *codecs.H264Payloader:
 		payloads, payloadDataIdx = p.Payloader.(*codecs.H264Payloader).PayloadAndDetectData(p.MTU-12, payload)
-	} else {
+	default:
 		payloads = p.Payloader.Payload(p.MTU-12, payload)
 	}
 	
