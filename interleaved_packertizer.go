@@ -2,7 +2,6 @@ package rtp
 
 import (
 	"github.com/pion/rtp/codecs"
-	"reflect"
 	"time"
 )
 
