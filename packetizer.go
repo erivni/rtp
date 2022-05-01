@@ -12,8 +12,10 @@ type Payloader interface {
 // Packetizer packetizes a payload
 type Packetizer interface {
 	Packetize(payload []byte, samples uint32) []*Packet
+	PacketizeAndDetectData(payload []byte, samples uint32) ([]*Packet, int)
 	EnableAbsSendTime(value int)
 	PacketizeInterleaved(payload []byte, samples uint32) []*Packet
+	PacketizeInterleavedAndDetectData(payload []byte, samples uint32) ([]*Packet, int)
 	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
 	GetTimestamps() (uint32, uint32)
 	GetStats() (uint64, uint64)
@@ -52,6 +54,14 @@ func NewPacketizer(mtu uint16, pt uint8, ssrc uint32, payloader Payloader, seque
 
 func (p *packetizer) EnableAbsSendTime(value int) {
 	p.extensionNumbers.AbsSendTime = value
+}
+
+func (p *packetizer) PacketizeAndDetectData(payload []byte, samples uint32) ([]*Packet, int) {
+	panic("not implemented")
+}
+
+func (p *packetizer) PacketizeInterleavedAndDetectData(payload []byte, samples uint32) ([]*Packet, int) {
+	panic("not implemented")
 }
 
 // Packetize packetizes the payload of an RTP packet and returns one or more RTP packets
