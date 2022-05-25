@@ -16,6 +16,14 @@ func (e *Extension) String() string {
 	return fmt.Sprintf("%d:%s", e.id, string(e.payload[:]))
 }
 
+func (e *Extension) ID() uint8 {
+	return e.id
+}
+
+func (e *Extension) Payload() []byte {
+	return e.payload
+}
+
 // Header represents an RTP packet header
 type Header struct {
 	Version          uint8
