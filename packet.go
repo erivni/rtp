@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"time"
 )
 
 // Extension RTP Header extension
@@ -37,6 +38,7 @@ type Header struct {
 	CSRC             []uint32
 	ExtensionProfile uint16
 	Extensions       []Extension
+	ArrivalTime      time.Time
 }
 
 // Packet represents an RTP Packet
