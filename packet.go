@@ -13,8 +13,15 @@ type Extension struct {
 	payload []byte
 }
 
+func NewExtension(id uint8, payload []byte) Extension {
+	return Extension{
+		id:      id,
+		payload: payload,
+	}
+}
+
 func (e *Extension) String() string {
-	return fmt.Sprintf("%d:%s", e.id, string(e.payload[:]))
+	return fmt.Sprintf("%d:%v", e.id, e.payload[:])
 }
 
 func (e *Extension) ID() uint8 {
