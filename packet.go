@@ -13,8 +13,8 @@ type Extension struct {
 	payload []byte
 }
 
-func NewExtension(id uint8, payload []byte) Extension {
-	return Extension{
+func NewExtension(id uint8, payload []byte) *Extension {
+	return &Extension{
 		id:      id,
 		payload: payload,
 	}
