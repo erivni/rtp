@@ -14,7 +14,7 @@ type Extension struct {
 }
 
 func (e *Extension) String() string {
-	return fmt.Sprintf("%d:%s", e.id, string(e.payload[:]))
+	return fmt.Sprintf("%d:%v", e.id, e.payload[:])
 }
 
 func (e *Extension) ID() uint8 {
