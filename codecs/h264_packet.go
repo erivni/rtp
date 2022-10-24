@@ -106,8 +106,8 @@ func emitNalus(nals []byte, emit func([]byte)) {
 				isSubtitle, endSubtitlePos := h264SubtitleSeiAttemptParse(nals, nextIndStart+nextIndLen)
 				if isSubtitle {
 					/* subtitles are being encoded as SEI nalus.
-					    each nalu has a start code which must be escaped.
-					    since we don't escape our subtitle SEI start code as part of our encoding, we skip it until the next nalu. */
+					   each nalu has a start code which must be escaped.
+					   since we don't escape our subtitle SEI start code as part of our encoding, we skip it until the next nalu. */
 					nextIndStart, nextIndLen = nextInd(nals, endSubtitlePos)
 				} else {
 					nextIndStart, nextIndLen = nextInd(nals, prevStart)
@@ -145,8 +145,6 @@ func (p *H264Payloader) PayloadAndDetectData(mtu uint16, payload []byte) ([][]by
 		naluRefIdc := nalu[0] & naluRefIdcBitmask
 
 		switch {
-		case naluType == audNALUType || naluType == fillerNALUType:
-			return
 		case naluType == spsNALUType:
 			p.spsNalu = nalu
 			return
