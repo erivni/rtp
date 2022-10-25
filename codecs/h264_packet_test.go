@@ -19,6 +19,8 @@ func TestH264Payloader_Payload(t *testing.T) {
 		{0x1c, 0x40, 0x13, 0x14, 0x15},
 	}
 
+	audpayload := [][]byte{{0x9, 0x0, 0x0}}
+
 	// Positive MTU, nil payload
 	res := pck.Payload(1, nil)
 	if len(res) != 0 {
@@ -42,7 +44,6 @@ func TestH264Payloader_Payload(t *testing.T) {
 	if len(res) != 0 {
 		t.Fatal("Generated payload should be empty")
 	}
-
 
 	// 0 MTU, small payload
 	res = pck.Payload(0, smallpayload)
@@ -84,8 +85,8 @@ func TestH264Payloader_Payload(t *testing.T) {
 
 	// Nalu type 9 or 12
 	res = pck.Payload(5, []byte{0x09, 0x00, 0x00})
-	if len(res) != 0 {
-		t.Fatal("Generated payload should be empty")
+	if !reflect.DeepEqual(res, audpayload) {
+		t.Fatal("Aud packetization failed. AUD and Filler nals should not be ignored")
 	}
 }
 
