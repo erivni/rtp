@@ -11,14 +11,12 @@ type H264Payloader struct {
 }
 
 const (
-	stapaNALUType  = 24
-	fuaNALUType    = 28
-	fubNALUType    = 29
-	seiNALUType    = 6
-	spsNALUType    = 7
-	ppsNALUType    = 8
-	audNALUType    = 9
-	fillerNALUType = 12
+	stapaNALUType = 24
+	fuaNALUType   = 28
+	fubNALUType   = 29
+	seiNALUType   = 6
+	spsNALUType   = 7
+	ppsNALUType   = 8
 
 	fuaHeaderSize       = 2
 	stapaHeaderSize     = 1
@@ -273,8 +271,6 @@ func (p *H264Payloader) Payload(mtu uint16, payload []byte) [][]byte {
 		naluRefIdc := nalu[0] & naluRefIdcBitmask
 
 		switch {
-		case naluType == audNALUType || naluType == fillerNALUType:
-			return
 		case naluType == spsNALUType:
 			p.spsNalu = nalu
 			return
