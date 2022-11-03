@@ -1127,3 +1127,65 @@ func (p *H265Payloader) Payload(mtu uint16, payload []byte) [][]byte {
 
 	return payloads
 }
+
+// H265SafariPayloader payloads H265 packets
+// based on: https://github.com/AlexxIT/Blog/issues/5
+type H265SafariPayloader struct {
+}
+
+// Payload fragments a H265 packet across one or more byte arrays in a Safari format
+func (p *H265SafariPayloader) Payload(mtu uint16, payload []byte) [][]byte {
+	var payloads [][]byte
+	if len(payload) == 0 {
+		return payloads
+	}
+
+	bufferedPayload := make([]byte, 0)
+	buffer := make([]byte, 0)
+	var start byte
+
+	emitNalus(payload, func(nalu []byte) {
+		if len(nalu) == 0 {
+			return
+		}
+
+		naluHeader := newH265NALUHeader(nalu[0], nalu[1])
+		naluType := naluHeader.Type()
+
+		// add 0x0001 before each nal
+		nalu = append(annexbNALUStartCode(), nalu...)
+
+		//fmt.Printf("nalType: %d\n", naluType)
+		switch {
+		case (naluType >= 32 && naluType <= 35) || naluType == 39:
+			// save AUD,VPS,SPS,PPS,SEI before Frame
+			buffer = append(buffer, nalu...)
+			return
+		case naluType >= 16 && naluType <= 21:
+			// append saved buffer before iframe with prefix 0x03
+			buffer = append([]byte{3}, buffer...)
+			nalu = append(buffer, nalu...)
+			start = 1
+		default:
+			// append saved buffer before iframe with prefix 0x03
+			buffer = append([]byte{2}, buffer...)
+			nalu = append(buffer, nalu...)
+			start = 0
+		}
+
+		bufferedPayload = append(bufferedPayload, nalu...)
+	})
+
+	// fragment packets per mtu
+	maxSize := int(mtu)
+
+	for len(bufferedPayload) > int(mtu) {
+		payloads = append(payloads, bufferedPayload[:maxSize])
+
+		// removed processed bytes
+		bufferedPayload = append([]byte{start}, bufferedPayload[maxSize:]...)
+	}
+
+	payloads = append(payloads, bufferedPayload)
+	return payloads
+}
