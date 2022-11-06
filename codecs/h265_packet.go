@@ -1155,7 +1155,6 @@ func (p *H265SafariPayloader) Payload(mtu uint16, payload []byte) [][]byte {
 		// add 0x0001 before each nal
 		nalu = append(annexbNALUStartCode(), nalu...)
 
-		//fmt.Printf("nalType: %d\n", naluType)
 		switch {
 		case (naluType >= 32 && naluType <= 35) || naluType == 39:
 			// save AUD,VPS,SPS,PPS,SEI before Frame
@@ -1180,12 +1179,18 @@ func (p *H265SafariPayloader) Payload(mtu uint16, payload []byte) [][]byte {
 	maxSize := int(mtu)
 
 	for len(bufferedPayload) > int(mtu) {
-		payloads = append(payloads, bufferedPayload[:maxSize])
+		out := make([]byte, maxSize)
+		copy(out, bufferedPayload[:maxSize])
+
+		payloads = append(payloads, out)
 
 		// removed processed bytes
 		bufferedPayload = append([]byte{start}, bufferedPayload[maxSize:]...)
 	}
 
-	payloads = append(payloads, bufferedPayload)
+	out := make([]byte, len(bufferedPayload))
+	copy(out, bufferedPayload)
+
+	payloads = append(payloads, out)
 	return payloads
 }
