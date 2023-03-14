@@ -2,9 +2,9 @@ name: Go
 
 on:
   push:
-    branches: [ v1.7.4_hyperscale ]
+    branches: [ v1.7.13_hyperscale ]
   pull_request:
-    branches: [ v1.7.4_hyperscale ]
+    branches: [ v1.7.13_hyperscale ]
 
 jobs:
 
