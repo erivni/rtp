@@ -174,16 +174,16 @@ func (h *Header) Unmarshal(buf []byte) (n int, err error) { //nolint:gocognit
 				}
 
 				extid := buf[n] >> 4
-				payloadLen := int(buf[n]&^0xF0 + 1)
+				len := int(buf[n]&^0xF0 + 1)
 				n++
 
 				if extid == extensionIDReserved {
 					break
 				}
 
-				extension := Extension{id: extid, payload: buf[n : n+payloadLen]}
+				extension := Extension{id: extid, payload: buf[n : n+len]}
 				h.Extensions = append(h.Extensions, extension)
-				n += payloadLen
+				n += len
 			}
 
 		// RFC 8285 RTP Two Byte Header Extension
@@ -198,12 +198,12 @@ func (h *Header) Unmarshal(buf []byte) (n int, err error) { //nolint:gocognit
 				extid := buf[n]
 				n++
 
-				payloadLen := int(buf[n])
+				len := int(buf[n])
 				n++
 
-				extension := Extension{id: extid, payload: buf[n : n+payloadLen]}
+				extension := Extension{id: extid, payload: buf[n : n+len]}
 				h.Extensions = append(h.Extensions, extension)
-				n += payloadLen
+				n += len
 			}
 
 		default: // RFC3550 Extension
@@ -227,6 +227,7 @@ func (p *Packet) Unmarshal(buf []byte) error {
 		return err
 	}
 	end := len(buf)
+	p.Length = len(buf)
 	if p.Header.Padding {
 		p.PaddingSize = buf[end-1]
 		end -= int(p.PaddingSize)
@@ -235,7 +236,6 @@ func (p *Packet) Unmarshal(buf []byte) error {
 		return errTooSmall
 	}
 	p.Payload = buf[n:end]
-	p.Length = len(buf)
 	return nil
 }
 
@@ -417,10 +417,10 @@ func (h *Header) SetExtension(id uint8, payload []byte) error { //nolint:gocogni
 	// No existing header extensions
 	h.Extension = true
 
-	switch payloadLen := len(payload); {
-	case payloadLen <= 16:
+	switch len := len(payload); {
+	case len <= 16:
 		h.ExtensionProfile = extensionProfileOneByte
-	case payloadLen > 16 && payloadLen < 256:
+	case len > 16 && len < 256:
 		h.ExtensionProfile = extensionProfileTwoByte
 	}
 
@@ -496,6 +496,7 @@ func (p Packet) Marshal() (buf []byte, err error) {
 
 // MarshalTo serializes the packet and writes to the buffer.
 func (p Packet) MarshalTo(buf []byte) (n int, err error) {
+	p.Header.Padding = p.PaddingSize != 0
 	n, err = p.Header.MarshalTo(buf)
 	if err != nil {
 		return 0, err
@@ -507,7 +508,6 @@ func (p Packet) MarshalTo(buf []byte) (n int, err error) {
 	}
 
 	m := copy(buf[n:], p.Payload)
-	p.Length = len(buf[:n+m])
 	if p.Header.Padding {
 		buf[n+m+int(p.PaddingSize-1)] = p.PaddingSize
 	}

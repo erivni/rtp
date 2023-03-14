@@ -39,6 +39,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     rawPkt[20:],
+		Length:      25,
 		PaddingSize: 0,
 	}
 
@@ -90,6 +91,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     rawPkt[20:21],
+		Length:      25,
 		PaddingSize: 4,
 	}
 	if err := p.Unmarshal(rawPkt); err != nil {
@@ -122,6 +124,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     []byte{},
+		Length:      25,
 		PaddingSize: 5,
 	}
 	if err := p.Unmarshal(rawPkt); err != nil {
@@ -157,6 +160,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     []byte{},
+		Length:      25,
 		PaddingSize: 0,
 	}
 	err := p.Unmarshal(rawPkt)
@@ -191,6 +195,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     rawPkt[20:21],
+		Length:      25,
 		PaddingSize: 4,
 	}
 	buf, err := parsedPacket.Marshal()
@@ -225,6 +230,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     []byte{},
+		Length:      25,
 		PaddingSize: 5,
 	}
 	buf, err = parsedPacket.Marshal()
@@ -258,6 +264,7 @@ func TestBasic(t *testing.T) {
 			CSRC:           []uint32{},
 		},
 		Payload:     []byte{},
+		Length:      25,
 		PaddingSize: 5,
 	}
 	buf, err = parsedPacket.Marshal()
