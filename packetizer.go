@@ -18,8 +18,7 @@ type Packetizer interface {
 	PacketizeInterleavedAndDetectData(payload []byte, samples uint32) ([]*Packet, int)
 	SetTimestamps(timestamp uint32, interleavedTimestamp uint32)
 	GetTimestamps() (uint32, uint32)
-	GetStats() (uint64, uint64)
-	GetCurrentSequenceNumber() (uint16)
+	GetCurrentSequenceNumber() uint16
 	SkipSamples(skippedSamples uint32)
 	SkipInterleavedSamples(skippedSamples uint32)
 }
@@ -113,7 +112,6 @@ func (p *packetizer) SkipSamples(skippedSamples uint32) {
 	p.Timestamp += skippedSamples
 }
 
-
 func (p *packetizer) SkipInterleavedSamples(skippedSamples uint32) {
 	panic("not implemented")
 }
@@ -131,10 +129,6 @@ func (p *packetizer) GetTimestamps() (uint32, uint32) {
 	panic("not implemented")
 }
 
-func (p *packetizer) GetStats() (uint64, uint64) {
-	panic("not implemented")
-}
-
-func (p *packetizer) GetCurrentSequenceNumber() (uint16){
+func (p *packetizer) GetCurrentSequenceNumber() uint16 {
 	panic("not implemented")
 }

@@ -18,8 +18,6 @@ type interleavedPacketizer struct {
 		AbsSendTime int // http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
 	}
 	timegen         func() time.Time
-	numberOfPackets uint64
-	sizeBytes       uint64
 }
 
 // NewPacketizer returns a new instance of a Packetizer for a specific payloader
@@ -33,8 +31,6 @@ func NewInterleavedPacketizer(mtu uint16, pt uint8, ssrc uint32, payloader Paylo
 		Timestamp:       globalMathRandomGenerator.Uint32(),
 		ClockRate:       clockRate,
 		timegen:         time.Now,
-		numberOfPackets: 0,
-		sizeBytes:       0,
 	}
 }
 
@@ -81,8 +77,6 @@ func (p *interleavedPacketizer) PacketizeAndDetectData(payload []byte, samples u
 			},
 			Payload: pp,
 		}
-		p.numberOfPackets++
-		p.sizeBytes += 15 + uint64(len(pp))
 	}
 	p.Timestamp += samples
 
@@ -126,8 +120,6 @@ func (p *interleavedPacketizer) Packetize(payload []byte, samples uint32) []*Pac
 			},
 			Payload: pp,
 		}
-		p.numberOfPackets++
-		p.sizeBytes += 15 + uint64(len(pp))
 	}
 	p.Timestamp += samples
 
@@ -171,8 +163,6 @@ func (p *interleavedPacketizer) PacketizeInterleaved(payload []byte, samples uin
 			},
 			Payload: pp,
 		}
-		p.numberOfPackets++
-		p.sizeBytes += 15 + uint64(len(pp))
 	}
 	p.InterleavedTimestamp += samples
 
@@ -225,8 +215,6 @@ func (p *interleavedPacketizer) PacketizeInterleavedAndDetectData(payload []byte
 			},
 			Payload: pp,
 		}
-		p.numberOfPackets++
-		p.sizeBytes += 15 + uint64(len(pp))
 	}
 	p.InterleavedTimestamp += samples
 
@@ -257,10 +245,6 @@ func (p *interleavedPacketizer) SetTimestamps(timestamp uint32, interleavedTimes
 
 func (p *interleavedPacketizer) GetTimestamps() (uint32, uint32) {
 	return p.Timestamp, p.InterleavedTimestamp
-}
-
-func (p *interleavedPacketizer) GetStats() (uint64, uint64) {
-	return p.numberOfPackets, p.sizeBytes
 }
 
 func (p *interleavedPacketizer) GetCurrentSequenceNumber() uint16 {
