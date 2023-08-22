@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
 package rtp
 
 import (
@@ -38,7 +41,8 @@ func TestBasic(t *testing.T) {
 			SSRC:           476325762,
 			CSRC:           []uint32{},
 		},
-		Payload: rawPkt[20:],
+		Payload:     rawPkt[20:],
+		PaddingSize: 0,
 		Length:  25,
 	}
 
@@ -89,8 +93,8 @@ func TestBasic(t *testing.T) {
 			SSRC:           476325762,
 			CSRC:           []uint32{},
 		},
-		Payload: rawPkt[20:21],
-		Length:  25,
+		Payload:     rawPkt[20:21],
+		PaddingSize: 4,
 	}
 	if err := p.Unmarshal(rawPkt); err != nil {
 		t.Error(err)
@@ -121,8 +125,8 @@ func TestBasic(t *testing.T) {
 			SSRC:           476325762,
 			CSRC:           []uint32{},
 		},
-		Payload: []byte{},
-		Length:  25,
+		Payload:     []byte{},
+		PaddingSize: 5,
 	}
 	if err := p.Unmarshal(rawPkt); err != nil {
 		t.Error(err)
@@ -156,7 +160,8 @@ func TestBasic(t *testing.T) {
 			SSRC:           476325762,
 			CSRC:           []uint32{},
 		},
-		Payload: []byte{},
+		Payload:     []byte{},
+		PaddingSize: 0,
 	}
 	err := p.Unmarshal(rawPkt)
 	if err == nil {
@@ -164,6 +169,108 @@ func TestBasic(t *testing.T) {
 	}
 	if !errors.Is(err, errTooSmall) {
 		t.Errorf("Expected error: %v, got: %v", errTooSmall, err)
+	}
+
+	// marshal packet with padding
+	rawPkt = []byte{
+		0xb0, 0xe0, 0x69, 0x8f, 0xd9, 0xc2, 0x93, 0xda, 0x1c, 0x64,
+		0x27, 0x82, 0x00, 0x01, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x98, 0x00, 0x00, 0x00, 0x04,
+	}
+	parsedPacket = &Packet{
+		Header: Header{
+			Padding:          true,
+			Marker:           true,
+			Extension:        true,
+			ExtensionProfile: 1,
+			Extensions: []Extension{
+				{0, []byte{
+					0xFF, 0xFF, 0xFF, 0xFF,
+				}},
+			},
+			Version:        2,
+			PayloadType:    96,
+			SequenceNumber: 27023,
+			Timestamp:      3653407706,
+			SSRC:           476325762,
+			CSRC:           []uint32{},
+		},
+		Payload:     rawPkt[20:21],
+		PaddingSize: 4,
+	}
+	buf, err := parsedPacket.Marshal()
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, rawPkt) {
+		t.Errorf("TestBasic padding marshal: got %#v, want %#v", buf, rawPkt)
+	}
+
+	// marshal packet with padding only
+	rawPkt = []byte{
+		0xb0, 0xe0, 0x69, 0x8f, 0xd9, 0xc2, 0x93, 0xda, 0x1c, 0x64,
+		0x27, 0x82, 0x00, 0x01, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x05,
+	}
+	parsedPacket = &Packet{
+		Header: Header{
+			Padding:          true,
+			Marker:           true,
+			Extension:        true,
+			ExtensionProfile: 1,
+			Extensions: []Extension{
+				{0, []byte{
+					0xFF, 0xFF, 0xFF, 0xFF,
+				}},
+			},
+			Version:        2,
+			PayloadType:    96,
+			SequenceNumber: 27023,
+			Timestamp:      3653407706,
+			SSRC:           476325762,
+			CSRC:           []uint32{},
+		},
+		Payload:     []byte{},
+		PaddingSize: 5,
+	}
+	buf, err = parsedPacket.Marshal()
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, rawPkt) {
+		t.Errorf("TestBasic padding marshal: got %#v, want %#v", buf, rawPkt)
+	}
+
+	// marshal packet with padding only without setting Padding explicitly in Header
+	rawPkt = []byte{
+		0xb0, 0xe0, 0x69, 0x8f, 0xd9, 0xc2, 0x93, 0xda, 0x1c, 0x64,
+		0x27, 0x82, 0x00, 0x01, 0x00, 0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x05,
+	}
+	parsedPacket = &Packet{
+		Header: Header{
+			Marker:           true,
+			Extension:        true,
+			ExtensionProfile: 1,
+			Extensions: []Extension{
+				{0, []byte{
+					0xFF, 0xFF, 0xFF, 0xFF,
+				}},
+			},
+			Version:        2,
+			Padding:        true,
+			PayloadType:    96,
+			SequenceNumber: 27023,
+			Timestamp:      3653407706,
+			SSRC:           476325762,
+			CSRC:           []uint32{},
+		},
+		Payload:     []byte{},
+		PaddingSize: 5,
+	}
+	buf, err = parsedPacket.Marshal()
+	if err != nil {
+		t.Error(err)
+	}
+	if !reflect.DeepEqual(buf, rawPkt) {
+		t.Errorf("TestBasic padding marshal: got %#v, want %#v", buf, rawPkt)
 	}
 }
 

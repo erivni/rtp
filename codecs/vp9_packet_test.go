@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
 package codecs
 
 import (
@@ -166,6 +169,22 @@ func TestVP9Packet_Unmarshal(t *testing.T) {
 				PGPDiff: [][]uint8{{}, {33}},
 				Payload: []byte{},
 			},
+		},
+		"ScalabilityMissingWidth": {
+			b:   []byte("200"),
+			err: errShortPacket,
+		},
+		"ScalabilityMissingNG": {
+			b:   []byte("b00200000000"),
+			err: errShortPacket,
+		},
+		"ScalabilityMissingTemporalLayerIDs": {
+			b:   []byte("20B0"),
+			err: errShortPacket,
+		},
+		"ScalabilityMissingReferenceIndices": {
+			b:   []byte("20B007"),
+			err: errShortPacket,
 		},
 	}
 	for name, c := range cases {

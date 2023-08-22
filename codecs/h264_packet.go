@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
 package codecs
 
 import (
@@ -11,9 +14,13 @@ type H264Payloader struct {
 }
 
 const (
-	stapaNALUType = 24
-	fuaNALUType   = 28
-	fubNALUType   = 29
+	stapaNALUType  = 24
+	fuaNALUType    = 28
+	fubNALUType    = 29
+	spsNALUType    = 7
+	ppsNALUType    = 8
+	audNALUType    = 9
+	fillerNALUType = 12
 	seiNALUType   = 6
 	spsNALUType   = 7
 	ppsNALUType   = 8
@@ -274,6 +281,9 @@ func (p *H264Payloader) Payload(mtu uint16, payload []byte) [][]byte {
 		case naluType == spsNALUType:
 			p.spsNalu = nalu
 			return
+		case naluType == spsNALUType:
+			p.spsNalu = nalu
+			return
 		case naluType == ppsNALUType:
 			p.ppsNalu = nalu
 			return
@@ -399,9 +409,9 @@ func (p *H264Packet) Unmarshal(payload []byte) ([]byte, error) {
 	if payload == nil {
 		return nil, errNilPacket
 	}
-	//else if len(payload) <= 2 {
-	//	return nil, fmt.Errorf("%w: %d <= 2", errShortPacket, len(payload))
-	//}
+	if len(payload) == 0 {
+		return nil, fmt.Errorf("%w: %d <=0", errShortPacket, len(payload))
+	}
 
 	// NALU Types
 	// https://tools.ietf.org/html/rfc6184#section-5.4
@@ -453,8 +463,17 @@ func (p *H264Packet) Unmarshal(payload []byte) ([]byte, error) {
 	return nil, fmt.Errorf("%w: %d", errUnhandledNALUType, naluType)
 }
 
-// H264PartitionHeadChecker is obsolete
+// H264PartitionHeadChecker checks H264 partition head.
+//
+// Deprecated: replaced by H264Packet.IsPartitionHead()
 type H264PartitionHeadChecker struct{}
+
+// IsPartitionHead checks if this is the head of a packetized nalu stream.
+//
+// Deprecated: replaced by H264Packet.IsPartitionHead()
+func (*H264PartitionHeadChecker) IsPartitionHead(packet []byte) bool {
+	return (&H264Packet{}).IsPartitionHead(packet)
+}
 
 // IsPartitionHead checks if this is the head of a packetized nalu stream.
 func (*H264Packet) IsPartitionHead(payload []byte) bool {
