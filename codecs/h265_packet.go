@@ -777,8 +777,6 @@ type H265Packet struct {
 	fuBuffer   []byte
 
 	videoDepacketizer
-
-	videoDepacketizer
 }
 
 func toAbsDON(don uint16, prevDON *uint16, prevAbsDON *int) int {
@@ -974,4 +972,253 @@ func (*H265Packet) IsPartitionHead(payload []byte) bool {
 	}
 
 	return true
+}
+
+// H265Payloader payloads H265 packets
+type H265Payloader struct {
+	AddDONL         bool
+	SkipAggregation bool
+	donl            uint16
+}
+
+// Payload fragments a H265 packet across one or more byte arrays
+func (p *H265Payloader) Payload(mtu uint16, payload []byte) [][]byte {
+	var payloads [][]byte
+	if len(payload) == 0 {
+		return payloads
+	}
+
+	bufferedNALUs := make([][]byte, 0)
+	aggregationBufferSize := 0
+
+	flushBufferedNals := func() {
+		if len(bufferedNALUs) == 0 {
+			return
+		}
+		if len(bufferedNALUs) == 1 {
+			// emit this as a single NALU packet
+			nalu := bufferedNALUs[0]
+
+			if p.AddDONL {
+				buf := make([]byte, len(nalu)+2)
+
+				// copy the NALU header to the payload header
+				copy(buf[0:h265NaluHeaderSize], nalu[0:h265NaluHeaderSize])
+
+				// copy the DONL into the header
+				binary.BigEndian.PutUint16(buf[h265NaluHeaderSize:h265NaluHeaderSize+2], p.donl)
+
+				// write the payload
+				copy(buf[h265NaluHeaderSize+2:], nalu[h265NaluHeaderSize:])
+
+				p.donl++
+
+				payloads = append(payloads, buf)
+			} else {
+				// write the nalu directly to the payload
+				payloads = append(payloads, nalu)
+			}
+		} else {
+			// construct an aggregation packet
+			aggregationPacketSize := aggregationBufferSize + 2
+			buf := make([]byte, aggregationPacketSize)
+
+			layerID := uint8(math.MaxUint8)
+			tid := uint8(math.MaxUint8)
+			for _, nalu := range bufferedNALUs {
+				header := newH265NALUHeader(nalu[0], nalu[1])
+				headerLayerID := header.LayerID()
+				headerTID := header.TID()
+				if headerLayerID < layerID {
+					layerID = headerLayerID
+				}
+				if headerTID < tid {
+					tid = headerTID
+				}
+			}
+
+			binary.BigEndian.PutUint16(buf[0:2], (uint16(h265NaluAggregationPacketType)<<9)|(uint16(layerID)<<3)|uint16(tid))
+
+			index := 2
+			for i, nalu := range bufferedNALUs {
+				if p.AddDONL {
+					if i == 0 {
+						binary.BigEndian.PutUint16(buf[index:index+2], p.donl)
+						index += 2
+					} else {
+						buf[index] = byte(i - 1)
+						index++
+					}
+				}
+				binary.BigEndian.PutUint16(buf[index:index+2], uint16(len(nalu)))
+				index += 2
+				index += copy(buf[index:], nalu)
+			}
+			payloads = append(payloads, buf)
+		}
+		// clear the buffered NALUs
+		bufferedNALUs = make([][]byte, 0)
+		aggregationBufferSize = 0
+	}
+
+	emitNalus(payload, func(nalu []byte) {
+		if len(nalu) == 0 {
+			return
+		}
+
+		if len(nalu) <= int(mtu) {
+			// this nalu fits into a single packet, either it can be emitted as
+			// a single nalu or appended to the previous aggregation packet
+
+			marginalAggregationSize := len(nalu) + 2
+			if p.AddDONL {
+				marginalAggregationSize += 1
+			}
+
+			if aggregationBufferSize+marginalAggregationSize > int(mtu) {
+				flushBufferedNals()
+			}
+			bufferedNALUs = append(bufferedNALUs, nalu)
+			aggregationBufferSize += marginalAggregationSize
+			if p.SkipAggregation {
+				// emit this immediately.
+				flushBufferedNals()
+			}
+		} else {
+			// if this nalu doesn't fit in the current mtu, it needs to be fragmented
+			fuPacketHeaderSize := h265FragmentationUnitHeaderSize + 2 /* payload header size */
+			if p.AddDONL {
+				fuPacketHeaderSize += 2
+			}
+
+			// then, fragment the nalu
+			maxFUPayloadSize := int(mtu) - fuPacketHeaderSize
+
+			naluHeader := newH265NALUHeader(nalu[0], nalu[1])
+
+			// the nalu header is omitted from the fragmentation packet payload
+			nalu = nalu[h265NaluHeaderSize:]
+
+			if maxFUPayloadSize == 0 || len(nalu) == 0 {
+				return
+			}
+
+			// flush any buffered aggregation packets.
+			flushBufferedNals()
+
+			fullNALUSize := len(nalu)
+			for len(nalu) > 0 {
+				curentFUPayloadSize := len(nalu)
+				if curentFUPayloadSize > maxFUPayloadSize {
+					curentFUPayloadSize = maxFUPayloadSize
+				}
+
+				out := make([]byte, fuPacketHeaderSize+curentFUPayloadSize)
+
+				// write the payload header
+				binary.BigEndian.PutUint16(out[0:2], uint16(naluHeader))
+				out[0] = (out[0] & 0b10000001) | h265NaluFragmentationUnitType<<1
+
+				// write the fragment header
+				out[2] = byte(H265FragmentationUnitHeader(naluHeader.Type()))
+				if len(nalu) == fullNALUSize {
+					// Set start bit
+					out[2] |= 1 << 7
+				} else if len(nalu)-curentFUPayloadSize == 0 {
+					// Set end bit
+					out[2] |= 1 << 6
+				}
+
+				if p.AddDONL {
+					// write the DONL header
+					binary.BigEndian.PutUint16(out[3:5], p.donl)
+
+					p.donl++
+
+					// copy the fragment payload
+					copy(out[5:], nalu[0:curentFUPayloadSize])
+				} else {
+					// copy the fragment payload
+					copy(out[3:], nalu[0:curentFUPayloadSize])
+				}
+
+				// append the fragment to the payload
+				payloads = append(payloads, out)
+
+				// advance the nalu data pointer
+				nalu = nalu[curentFUPayloadSize:]
+			}
+		}
+	})
+
+	flushBufferedNals()
+
+	return payloads
+}
+
+// H265SafariPayloader payloads H265 packets
+// based on: https://github.com/AlexxIT/Blog/issues/5
+type H265SafariPayloader struct {
+}
+
+// Payload fragments a H265 packet across one or more byte arrays in a Safari format
+func (p *H265SafariPayloader) Payload(mtu uint16, payload []byte) [][]byte {
+	var payloads [][]byte
+	if len(payload) == 0 {
+		return payloads
+	}
+
+	bufferedPayload := make([]byte, 0)
+	buffer := make([]byte, 0)
+	var start byte
+
+	emitNalus(payload, func(nalu []byte) {
+		if len(nalu) == 0 {
+			return
+		}
+
+		naluHeader := newH265NALUHeader(nalu[0], nalu[1])
+		naluType := naluHeader.Type()
+
+		// add 0x0001 before each nal
+		nalu = append(annexbNALUStartCode(), nalu...)
+
+		switch {
+		case (naluType >= 32 && naluType <= 35) || naluType == 39:
+			// save AUD,VPS,SPS,PPS,SEI before Frame
+			buffer = append(buffer, nalu...)
+			return
+		case naluType >= 16 && naluType <= 21:
+			// append saved buffer before iframe with prefix 0x03
+			buffer = append([]byte{3}, buffer...)
+			nalu = append(buffer, nalu...)
+			start = 1
+		default:
+			// append saved buffer before iframe with prefix 0x03
+			buffer = append([]byte{2}, buffer...)
+			nalu = append(buffer, nalu...)
+			start = 0
+		}
+
+		bufferedPayload = append(bufferedPayload, nalu...)
+	})
+
+	// fragment packets per mtu
+	maxSize := int(mtu)
+
+	for len(bufferedPayload) > int(mtu) {
+		out := make([]byte, maxSize)
+		copy(out, bufferedPayload[:maxSize])
+
+		payloads = append(payloads, out)
+
+		// removed processed bytes
+		bufferedPayload = append([]byte{start}, bufferedPayload[maxSize:]...)
+	}
+
+	out := make([]byte, len(bufferedPayload))
+	copy(out, bufferedPayload)
+
+	payloads = append(payloads, out)
+	return payloads
 }
