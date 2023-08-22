@@ -22,8 +22,6 @@ const (
 	audNALUType    = 9
 	fillerNALUType = 12
 	seiNALUType   = 6
-	spsNALUType   = 7
-	ppsNALUType   = 8
 
 	fuaHeaderSize       = 2
 	stapaHeaderSize     = 1
