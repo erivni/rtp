@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -51,9 +52,10 @@ type Packet struct {
 	Header
 	Payload     []byte
 	PaddingSize byte
-	Length  int
+	Length      int
 	// Deprecated: will be removed in a future version.
-	Raw []byte
+	Raw     []byte
+	bufPool *sync.Pool
 }
 
 const (
@@ -248,6 +250,16 @@ func (p *Packet) Unmarshal(buf []byte) error {
 	p.Length = len(buf)
 
 	return nil
+}
+
+func (p *Packet) SetPooledBuffer(pool *sync.Pool) {
+	p.bufPool = pool
+}
+func (p *Packet) ReleaseToPool() {
+	if p.bufPool == nil {
+		return
+	}
+	p.bufPool.Put(p.Raw)
 }
 
 // Marshal serializes the header into bytes.
