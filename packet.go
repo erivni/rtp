@@ -1,9 +1,13 @@
+// SPDX-FileCopyrightText: 2023 The Pion community <https://pion.ly>
+// SPDX-License-Identifier: MIT
+
 package rtp
 
 import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"sync"
 	"time"
 )
 
@@ -39,13 +43,19 @@ type Header struct {
 	ExtensionProfile uint16
 	Extensions       []Extension
 	ArrivalTime      time.Time
+	// Deprecated: will be removed in a future version.
+	PayloadOffset int
 }
 
 // Packet represents an RTP Packet
 type Packet struct {
 	Header
-	Length  int
-	Payload []byte
+	Payload     []byte
+	PaddingSize byte
+	Length      int
+	// Deprecated: will be removed in a future version.
+	Raw     []byte
+	bufPool *sync.Pool
 }
 
 const (
@@ -173,16 +183,16 @@ func (h *Header) Unmarshal(buf []byte) (n int, err error) { //nolint:gocognit
 				}
 
 				extid := buf[n] >> 4
-				len := int(buf[n]&^0xF0 + 1)
+				payloadLen := int(buf[n]&^0xF0 + 1)
 				n++
 
 				if extid == extensionIDReserved {
 					break
 				}
 
-				extension := Extension{id: extid, payload: buf[n : n+len]}
+				extension := Extension{id: extid, payload: buf[n : n+payloadLen]}
 				h.Extensions = append(h.Extensions, extension)
-				n += len
+				n += payloadLen
 			}
 
 		// RFC 8285 RTP Two Byte Header Extension
@@ -197,12 +207,12 @@ func (h *Header) Unmarshal(buf []byte) (n int, err error) { //nolint:gocognit
 				extid := buf[n]
 				n++
 
-				len := int(buf[n])
+				payloadLen := int(buf[n])
 				n++
 
-				extension := Extension{id: extid, payload: buf[n : n+len]}
+				extension := Extension{id: extid, payload: buf[n : n+payloadLen]}
 				h.Extensions = append(h.Extensions, extension)
-				n += len
+				n += payloadLen
 			}
 
 		default: // RFC3550 Extension
@@ -216,6 +226,7 @@ func (h *Header) Unmarshal(buf []byte) (n int, err error) { //nolint:gocognit
 			n += len(h.Extensions[0].payload)
 		}
 	}
+
 	return n, nil
 }
 
@@ -225,31 +236,46 @@ func (p *Packet) Unmarshal(buf []byte) error {
 	if err != nil {
 		return err
 	}
+
 	end := len(buf)
 	if p.Header.Padding {
-		end -= int(buf[end-1])
+		p.PaddingSize = buf[end-1]
+		end -= int(p.PaddingSize)
 	}
 	if end < n {
 		return errTooSmall
 	}
+
 	p.Payload = buf[n:end]
 	p.Length = len(buf)
+
 	return nil
 }
 
+func (p *Packet) SetPooledBuffer(pool *sync.Pool) {
+	p.bufPool = pool
+}
+func (p *Packet) ReleaseToPool() {
+	if p.bufPool == nil {
+		return
+	}
+	p.bufPool.Put(p.Raw)
+}
+
 // Marshal serializes the header into bytes.
-func (h *Header) Marshal() (buf []byte, err error) {
+func (h Header) Marshal() (buf []byte, err error) {
 	buf = make([]byte, h.MarshalSize())
 
 	n, err := h.MarshalTo(buf)
 	if err != nil {
 		return nil, err
 	}
+
 	return buf[:n], nil
 }
 
 // MarshalTo serializes the header and writes to the buffer.
-func (h *Header) MarshalTo(buf []byte) (n int, err error) {
+func (h Header) MarshalTo(buf []byte) (n int, err error) {
 	/*
 	 *  0                   1                   2                   3
 	 *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
@@ -346,7 +372,7 @@ func (h *Header) MarshalTo(buf []byte) (n int, err error) {
 }
 
 // MarshalSize returns the size of the header once marshaled.
-func (h *Header) MarshalSize() int {
+func (h Header) MarshalSize() int {
 	// NOTE: Be careful to match the MarshalTo() method.
 	size := 12 + (len(h.CSRC) * csrcLength)
 
@@ -415,10 +441,10 @@ func (h *Header) SetExtension(id uint8, payload []byte) error { //nolint:gocogni
 	// No existing header extensions
 	h.Extension = true
 
-	switch len := len(payload); {
-	case len <= 16:
+	switch payloadLen := len(payload); {
+	case payloadLen <= 16:
 		h.ExtensionProfile = extensionProfileOneByte
-	case len > 16 && len < 256:
+	case payloadLen > 16 && payloadLen < 256:
 		h.ExtensionProfile = extensionProfileTwoByte
 	}
 
@@ -481,7 +507,7 @@ func (h *Header) DelExtension(id uint8) error {
 }
 
 // Marshal serializes the packet into bytes.
-func (p *Packet) Marshal() (buf []byte, err error) {
+func (p Packet) Marshal() (buf []byte, err error) {
 	buf = make([]byte, p.MarshalSize())
 
 	n, err := p.MarshalTo(buf)
@@ -500,29 +526,34 @@ func (p *Packet) MarshalTo(buf []byte) (n int, err error) {
 	}
 
 	// Make sure the buffer is large enough to hold the packet.
-	if n+len(p.Payload) > len(buf) {
+	if n+len(p.Payload)+int(p.PaddingSize) > len(buf) {
 		return 0, io.ErrShortBuffer
 	}
 
 	m := copy(buf[n:], p.Payload)
 	p.Length = len(buf[:n+m])
 
-	return n + m, nil
+	if p.Header.Padding {
+		buf[n+m+int(p.PaddingSize-1)] = p.PaddingSize
+	}
+
+	return n + m + int(p.PaddingSize), nil
 }
 
 // MarshalSize returns the size of the packet once marshaled.
-func (p *Packet) MarshalSize() int {
-	return p.Header.MarshalSize() + len(p.Payload)
+func (p Packet) MarshalSize() int {
+	return p.Header.MarshalSize() + len(p.Payload) + int(p.PaddingSize)
 }
 
 // Clone returns a deep copy of p.
-func (p *Packet) Clone() *Packet {
+func (p Packet) Clone() *Packet {
 	clone := &Packet{}
 	clone.Header = p.Header.Clone()
 	if p.Payload != nil {
 		clone.Payload = make([]byte, len(p.Payload))
 		copy(clone.Payload, p.Payload)
 	}
+	clone.PaddingSize = p.PaddingSize
 	return clone
 }
 
